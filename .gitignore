@@ -6,9 +6,10 @@ __pycache__/
 
 # Local editor settings
 .vscode/
+.idea/
 
 # Local AI model files
-models/
+/models/
 *.litertlm
 *.tflite
 *.onnx
@@ -18,3 +19,11 @@ models/
 *.jpeg
 *.png
 ocr/output/
+
+# Gradle and Android build artifacts
+.gradle/
+build/
+app/build/
+*.apk
+*.aab
+local.properties
