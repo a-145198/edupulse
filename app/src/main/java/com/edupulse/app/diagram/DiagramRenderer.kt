@@ -24,6 +24,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -47,6 +49,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
+import java.util.Locale
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
@@ -60,6 +63,29 @@ fun DiagramCard(
     var activeTab by remember { mutableStateOf(0) } // 0: Motion Track, 1: Free-Body Forces
     val scope = rememberCoroutineScope()
     val animProgress = remember { Animatable(0f) }
+
+    // Interactive "What-If?" Sandbox State
+    var showSandbox by remember { mutableStateOf(false) }
+    val baseU = remember(diagram) {
+        if (diagram is PhysicsDiagram.Kinematics) {
+            diagram.initialVelocity?.filter { it.isDigit() || it == '.' }?.toFloatOrNull() ?: 10f
+        } else 10f
+    }
+    val baseA = remember(diagram) {
+        if (diagram is PhysicsDiagram.Kinematics) {
+            val parsedA = diagram.acceleration?.filter { it.isDigit() || it == '.' }?.toFloatOrNull()
+            if (parsedA != null && parsedA > 0f) parsedA else {
+                val f = diagram.force?.filter { it.isDigit() || it == '.' }?.toFloatOrNull()
+                val m = diagram.mass?.filter { it.isDigit() || it == '.' }?.toFloatOrNull()
+                if (f != null && m != null && m > 0f) f / m else 2.5f
+            }
+        } else 2.5f
+    }
+    var sandboxU by remember(diagram) { mutableStateOf(baseU) }
+    val currentU = if (showSandbox) sandboxU else baseU
+    val velocityFactor = if (baseU > 0f) (currentU / baseU).coerceIn(0.4f, 2.2f) else 1f
+    val currentS = (currentU * currentU) / (2f * baseA)
+    val currentT = currentU / baseA
 
     Card(
         shape = RoundedCornerShape(16.dp),
@@ -146,7 +172,8 @@ fun DiagramCard(
                     if (activeTab == 0) {
                         KinematicsTrackCanvas(
                             diagram = diagram,
-                            progress = animProgress.value
+                            progress = animProgress.value,
+                            velocityFactor = velocityFactor
                         )
                     } else {
                         FreeBodyForcesCanvas(
@@ -177,32 +204,61 @@ fun DiagramCard(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Surface(
-                        onClick = {
-                            scope.launch {
-                                animProgress.snapTo(0f)
-                                animProgress.animateTo(
-                                    targetValue = 1f,
-                                    animationSpec = tween(durationMillis = 1800, easing = FastOutSlowInEasing)
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Surface(
+                            onClick = {
+                                val animDuration = (1800 * velocityFactor).toInt().coerceIn(800, 3500)
+                                scope.launch {
+                                    animProgress.snapTo(0f)
+                                    animProgress.animateTo(
+                                        targetValue = 1f,
+                                        animationSpec = tween(durationMillis = animDuration, easing = FastOutSlowInEasing)
+                                    )
+                                }
+                            },
+                            shape = RoundedCornerShape(12.dp),
+                            color = MaterialTheme.colorScheme.secondaryContainer,
+                            modifier = Modifier.height(30.dp)
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.padding(horizontal = 10.dp)
+                            ) {
+                                Text("▶", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSecondaryContainer)
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    "Simulate Motion",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = MaterialTheme.colorScheme.onSecondaryContainer
                                 )
                             }
-                        },
-                        shape = RoundedCornerShape(12.dp),
-                        color = MaterialTheme.colorScheme.secondaryContainer,
-                        modifier = Modifier.height(30.dp)
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.padding(horizontal = 10.dp)
+                        }
+
+                        // Sandbox Toggle Pill
+                        Surface(
+                            onClick = { showSandbox = !showSandbox },
+                            shape = RoundedCornerShape(12.dp),
+                            color = if (showSandbox) MaterialTheme.colorScheme.tertiaryContainer else MaterialTheme.colorScheme.surfaceVariant,
+                            border = if (showSandbox) BorderStroke(1.dp, MaterialTheme.colorScheme.tertiary) else null,
+                            modifier = Modifier.height(30.dp)
                         ) {
-                            Text("▶", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSecondaryContainer)
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                "Simulate Motion",
-                                style = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.SemiBold,
-                                color = MaterialTheme.colorScheme.onSecondaryContainer
-                            )
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.padding(horizontal = 10.dp)
+                            ) {
+                                Text("🧪", fontSize = 11.sp)
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    if (showSandbox) "Sandbox ON" else "What-If? 🧪",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = if (showSandbox) MaterialTheme.colorScheme.onTertiaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
                         }
                     }
 
@@ -213,6 +269,89 @@ fun DiagramCard(
                             color = if (animProgress.value >= 0.99f) Color(0xFF388E3C) else MaterialTheme.colorScheme.primary,
                             fontWeight = FontWeight.Medium
                         )
+                    }
+                }
+
+                // If Sandbox is opened: Interactive Slider
+                if (showSandbox) {
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Card(
+                        shape = RoundedCornerShape(12.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f)
+                        ),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.tertiary.copy(alpha = 0.4f)),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    "🧪 What-If? Speed Experiment",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.tertiary
+                                )
+                                Text(
+                                    "s = u² / 2a",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = MaterialTheme.colorScheme.outline
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(6.dp))
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    "Initial Velocity (u):",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Text(
+                                    String.format(Locale.US, "%.1f m/s", currentU),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF2E7D32)
+                                )
+                            }
+
+                            Slider(
+                                value = sandboxU,
+                                onValueChange = { sandboxU = it },
+                                valueRange = 2f..30f,
+                                modifier = Modifier.height(28.dp),
+                                colors = SliderDefaults.colors(
+                                    thumbColor = MaterialTheme.colorScheme.tertiary,
+                                    activeTrackColor = MaterialTheme.colorScheme.tertiary
+                                )
+                            )
+
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(
+                                    String.format(Locale.US, "Stopping Distance: %.1f m", currentS),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = Color(0xFF1565C0)
+                                )
+                                Text(
+                                    String.format(Locale.US, "Time to Stop: %.1f s", currentT),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
                     }
                 }
 
@@ -227,12 +366,15 @@ fun DiagramCard(
             ) {
                 if (diagram is PhysicsDiagram.Kinematics) {
                     diagram.mass?.let { ParamChip("m", it) }
-                    diagram.initialVelocity?.let { ParamChip("u", it, Color(0xFF2E7D32)) }
+                    val displayU = if (showSandbox) String.format(Locale.US, "%.1f m/s", currentU) else diagram.initialVelocity
+                    displayU?.let { ParamChip("u", it, Color(0xFF2E7D32)) }
                     diagram.finalVelocity?.let { ParamChip("v", it, Color(0xFFC62828)) }
                     diagram.acceleration?.let { ParamChip("a", it) }
                     diagram.force?.let { ParamChip("F", it, Color(0xFFD84315)) }
-                    diagram.distance?.let { ParamChip("s", it, Color(0xFF1565C0)) }
-                    diagram.time?.let { ParamChip("t", it) }
+                    val displayS = if (showSandbox) String.format(Locale.US, "%.1f m", currentS) else diagram.distance
+                    displayS?.let { ParamChip("s", it, Color(0xFF1565C0)) }
+                    val displayT = if (showSandbox) String.format(Locale.US, "%.1f s", currentT) else diagram.time
+                    displayT?.let { ParamChip("t", it) }
                 }
             }
         }
@@ -269,6 +411,7 @@ private fun ParamChip(label: String, value: String, accentColor: Color? = null) 
 private fun KinematicsTrackCanvas(
     diagram: PhysicsDiagram.Kinematics,
     progress: Float,
+    velocityFactor: Float = 1f,
     modifier: Modifier = Modifier
 ) {
     val primaryColor = MaterialTheme.colorScheme.primary
@@ -358,10 +501,12 @@ private fun KinematicsTrackCanvas(
 
         // 4. Vector Arrows: Initial Velocity & Braking Force
         if (progress < 0.95f) {
-            // Velocity Arrow (Right ->)
+            // Velocity Arrow (Right ->) dynamically scaled by velocityFactor
             val vArrowY = currentBlockTop - 14.dp.toPx()
             val vArrowStart = currentBlockX + 10.dp.toPx()
-            val vArrowEnd = currentBlockX + blockW / 2 + 45.dp.toPx()
+            val baseArrowLen = 45.dp.toPx()
+            val scaledLen = (baseArrowLen * velocityFactor).coerceIn(18.dp.toPx(), 85.dp.toPx())
+            val vArrowEnd = currentBlockX + blockW / 2 + scaledLen
             drawArrow(
                 color = velocityColor,
                 start = Offset(vArrowStart, vArrowY),
