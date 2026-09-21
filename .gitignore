@@ -26,4 +26,5 @@ build/
 app/build/
 *.apk
 *.aab
+*.mp4
 local.properties
