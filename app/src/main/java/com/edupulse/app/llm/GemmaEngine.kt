@@ -41,8 +41,13 @@ object GemmaEngine {
             "Calculation / Explanation:\n" +
             "Final Answer:\n" +
             "\n" +
-            "Step 3: If this problem involves kinematics, motion, or mechanics, include a compact diagram descriptor at the very end in this format:\n" +
-            "[DIAGRAM:KINEMATICS | mass=... | u=... | v=... | a=... | F=... | s=... | t=...]"
+            "Step 3: If this problem involves physics (motion, kinematics, forces, projectile, or mechanics), conclude your response with a structured simulation descriptor at the very end in one of these formats:\n" +
+            "- 1D Motion / Kinematics (acceleration, braking, deceleration, free fall, constant speed):\n" +
+            "[DIAGRAM:KINEMATICS | mass=... | u=... | v=... | a=... | F=... | s=... | t=...]\n" +
+            "- 2D Parabolic Projectile Motion (launch angle, velocity, range, height):\n" +
+            "[DIAGRAM:PROJECTILE | velocity=... | angle=... | range=... | height=... | time=...]\n" +
+            "- Force Balance / Equilibrium (normal, gravity, friction, applied):\n" +
+            "[DIAGRAM:FREE_BODY | mass=... | normal=... | gravity=... | applied=... | friction=... | net=...]"
     }
 
     private var engine: Engine? = null
