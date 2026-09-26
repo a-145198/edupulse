@@ -7,6 +7,8 @@
 ## 🌟 Overview
 **EduPulse** brings an elite STEM tutor straight to students' pockets—completely disconnected from the internet. By combining **local GPU LLM inference (Google LiteRT-LM & Gemma 2B)**, **on-device OCR (PaddleOCR v5 via ONNX Runtime)**, **interactive vector physics simulation (Jetpack Compose Canvas)**, and **native regional languages (Telugu, Hindi, English)**, EduPulse solves the educational digital divide with zero cloud latency, zero subscription costs, and 100% air-gapped student privacy.
 
+> 📖 **Full Technical Master Documentation:** For the exhaustive 12-section technical blueprint covering the full 8-layer architecture, mathematical derivations, character confusion matrices, silent OCR corruption solutions, and complete benchmarks, see [**`COMPLETE_PROJECT_DOCUMENTATION.md`**](COMPLETE_PROJECT_DOCUMENTATION.md).
+
 ---
 
 ## 🚀 Key Features
